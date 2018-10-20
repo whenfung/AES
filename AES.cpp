@@ -3,7 +3,7 @@
 
 unsigned char w[44][4];           //10个轮密钥
 
-unsigned char SBox_Chg(char sin,int bits) {
+unsigned char SBox_Chg(char sin,int bits) {  //对字符sin进行字节替换 
 //S盒变换
 	int i,j,k=0;
 	char temp,out[8];
@@ -22,7 +22,7 @@ unsigned char SBox_Chg(char sin,int bits) {
 	return (S_box[i][j]);   //返回得到的S盒的值
 }
 
-unsigned char SBox_1_Chg(char sin,int bits) {
+unsigned char SBox_1_Chg(char sin,int bits) {  //就返回值和S盒替换不一样 
 //S盒逆变换
 	int i,j,k=0;
 	char temp,out[8];
@@ -38,31 +38,31 @@ unsigned char SBox_1_Chg(char sin,int bits) {
 	}
 	i=out[0]*8+out[1]*4+out[2]*2+out[3];//行号
 	j=out[4]*8+out[5]*4+out[6]*2+out[7];//列号
-	return (SBox_1[i][j]);
+	return (SBox_1[i][j]);      
 
 }
 
-void Getkey(unsigned char key[16]) {
+void Getkey(unsigned char key[16]) {  
 	//10个轮密钥生成
 	static unsigned char temp[4],t[4];
 	int i,j,k;
-	for(i=0; i<4; i++) {
-		memcpy(w[i],&key[i*4],4);
+	for(i=0; i<4; i++) {       
+		memcpy(w[i],&key[i*4],4);     //这里的轮密钥按行存储，每行32bits，0到4行是原始密钥 
 	}
-	for(i=4; i<44; i++) {
-		memcpy(temp,w[i-1],4);
-		if(i%4==0) {
-			memcpy(t,temp,1);
+	for(i=4; i<44; i++) {               
+		memcpy(temp,w[i-1],4);          //w[j-1] 
+		if(i%4==0) {                    //if(j-1)%4==0,进行变换 
+			memcpy(t,temp,1);           //3个memcpy其实是进行循环左移一位 
 			memcpy(temp,&temp[1],3);
 			memcpy(&temp[3],t,1);
-			for(j=0,k=(i/4)*4; j<4; j++,k++) {
-				temp[j]=SBox_Chg(temp[j],8)^RC[k-4];
+			for(j = 0,k=(i/4)*4; j<4; j++,k++) {          //进行S盒变换后和RC进行异或 
+				temp[j]=SBox_Chg(temp[j],8)^RC[k-4];      //每次循环和RC数组异或一个字节，循环四次，生成g(w[j-1]) 
 			}
-			for(j=0; j<4; j++) {
+			for(j=0; j<4; j++) {                          //w[j] = g(w[j-1]) ^ w[i-4] 
 				w[i][j]=w[i-4][j]^temp[j];
 			}
 		} else
-			for(j=0; j<4; j++) {
+			for(j=0; j<4; j++) {                         //w[j] = w[j-4] ^ w[j-1]
 				w[i][j]=w[i-4][j]^temp[j];
 			}
 	}
@@ -98,16 +98,16 @@ void rows_mov_1(unsigned char *sin) {  //行移位运算逆运算
 	memcpy(&sin[15],temp,1);      //循环右移3位，实质为内存内容相互交换
 }
 
-unsigned char GF2mul(unsigned char a, unsigned char b) {
+unsigned char GF2mul(unsigned char a, unsigned char b) { 
 //有限域GF(2^8)上的乘法
 	unsigned char bw[4];
 	unsigned char res=0;
 	int i;
 	bw[0] = b;
-	for(i=1; i<4; i++) {    //循环三次，得到乘2、4、8后的值
+	for(i=1; i<4; i++) {       //循环三次，得到乘2、4、8后的值
 		bw[i] = bw[i-1]<<1;    //原数值乘2
-		if(bw[i-1]&0x80) {  //判断原数值是否小于0x80
-			bw[i]^=0x1b;    //最左为1，减去0x1b
+		if(bw[i-1]&0x80) {     //判断原数值是否小于0x80，掩码原理 
+			bw[i]^=0x1b;       //最左为1，减去0x1b
 		}
 	}
 	for(i=0; i<4; i++) {
@@ -125,7 +125,7 @@ void columnsmix(unsigned char *sin) {
 	for(i=0; i<4; i++)
 		for(k=0; k<4; k++)
 			for(j=0; j<4; j++)
-				t[i][k]^=GF2mul(L_mix[i][j],sin[j*4+k]);
+				t[i][k]^=GF2mul(L_mix[i][j],sin[j*4+k]);  //矩阵运算：c[i][k] += a[i][j] * b[j][k]
 	memcpy(sin,t,16);
 }
 
@@ -141,13 +141,13 @@ void columnsmix_1(unsigned char *sin) {
 	memcpy(sin,t,16);
 }
 
-void addroundkey_start(unsigned char *sin,unsigned char (*p)[4]) {
-//最初一次轮密钥加操作
+void addroundkey_start(unsigned char *sin,unsigned char (*p)[4]) {  //sin[j][i] = sin[i][j]^p[i][j]
+//最初一次轮密钥加操作，按顺序异或 
 	unsigned char out[16];
 	int i,j,k=0;
 	for(i=0; i<4; i++)
 		for(j=0; j<4; j++) {
-			out[j*4+i]=sin[k]^p[i][j];
+			out[j*4+i]=sin[k]^p[i][j];  
 			k++;
 		}
 	memcpy(sin,out,16);
@@ -155,7 +155,7 @@ void addroundkey_start(unsigned char *sin,unsigned char (*p)[4]) {
 
 
 void addroundkey(unsigned char *sin,unsigned char (*p)[4]) {
-//轮密钥加操作
+//轮密钥加操作，相应的为进行异或，由于第一次轮密钥之后sin逻辑上是按列排列的，即 sin[j][i] = sin[j][i]^p[i][j] 
 	unsigned char out[16];
 	int i,j,k=0;
 	for(i=0; i<4; i++)
@@ -166,49 +166,49 @@ void addroundkey(unsigned char *sin,unsigned char (*p)[4]) {
 	memcpy(sin,out,16);
 }
 
-void AES_Cry(unsigned char *sin) {
+void AES_Cry(unsigned char *sin) {   //sin是信息的意思 
 	int i,j,k=0;
 
-	addroundkey_start(sin,&w[0]);
-	for(i=1; i<10; i++) {
+	addroundkey_start(sin,&w[0]);   //第一轮密钥加操作 
+	for(i=1; i<10; i++) {            //S盒置换 
 		for(j=0; j<16; j++)
 			sin[j]=SBox_Chg(sin[j],8);
-		rows_mov(sin);
-		columnsmix(sin);
-		addroundkey(sin,&w[i*4]);
+		rows_mov(sin);                   //行移位 
+		columnsmix(sin);                 //列混淆 
+		addroundkey(sin,&w[i*4]);        //轮密钥加 
 
 	}
-	for(j=0; j<16; j++)  //第十六轮加密
-		sin[j]=SBox_Chg(sin[j],8);
-	rows_mov(sin);
-	addroundkey(sin,&w[i*4]);
+	for(j=0; j<16; j++)                //第十六轮加密  
+		sin[j]=SBox_Chg(sin[j],8);      //S盒置换 
+	rows_mov(sin);                      //行移位 
+	addroundkey(sin,&w[i*4]);           //轮密钥加 
 }
 
 void AES_Dec(unsigned char *sin) {
-	int i,j,k=0;
+	int i,j,k=0;                     
 
-	addroundkey(sin,&w[40]);
-	for(i=9; i>0; i--) {
-		rows_mov_1(sin);
+	addroundkey(sin,&w[40]);           //轮密钥加 
+	for(i=9; i>0; i--) {              
+		rows_mov_1(sin);                    //逆向行移位  
 		for(j=0; j<16; j++)
-			sin[j]=SBox_1_Chg(sin[j],8);
-		addroundkey(sin,&w[i*4]);
-		columnsmix_1(sin);
+			sin[j]=SBox_1_Chg(sin[j],8);    //逆向字节替换 
+		addroundkey(sin,&w[i*4]);           //轮密钥加 
+		columnsmix_1(sin);                  //逆向列混淆 
 	}
-	rows_mov_1(sin);
-	for(j=0; j<16; j++)
-		sin[j]=SBox_1_Chg(sin[j],8);
-	addroundkey(sin,&w[i*4]);
+	rows_mov_1(sin);                        //逆向行移位 
+	for(j=0; j<16; j++)                    //逆向字节替换 
+		sin[j]=SBox_1_Chg(sin[j],8);        
+	addroundkey(sin,&w[i*4]);               //轮密钥加 
 }
 
 int main() {
 	int i,j;
 
-	unsigned char messages[17]= {0};
-	unsigned char Mykey[17]= {0};
-	unsigned char Yourkey[17]= {0};
+	unsigned char messages[17]= {0}; //不足16个字符自动补0 
+	unsigned char Mykey[17]= {0};    
+	unsigned char Yourkey[17]= {0};  
 	printf("Please Input message:(128bit)\n");
-	gets((char*)messages);
+	gets((char*)messages);  //输入messages的时候是char型，不影响后面的加密 
 
 	printf("Please Input Key:(128bit)\n");
 	gets((char*)Mykey);
@@ -218,13 +218,13 @@ int main() {
 	printf("\n\n加密后：");
 	for(i=0; i<4; i++)
 		for(j=0; j<4; j++)
-			printf("%x ",messages[j*4+i]);
+			printf("%x ",messages[j*4+i]);              
 	printf("\nPlease Input Key:(128bit)\n");
 	gets((char*)Yourkey);
 	Getkey(Yourkey);
 	AES_Dec(messages);
 	printf("\n解密后：");
-	for(i=0; i<4; i++)
+	for(i=0; i<4; i++)   //解密后的字符串不是顺序的，实际是按列存储的4*4字符矩阵 
 		for(j=0; j<4; j++)
 			printf("%c ",messages[j*4+i]);
 	printf("\n");
