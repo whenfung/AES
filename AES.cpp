@@ -107,7 +107,7 @@ unsigned char GF2mul(unsigned char a, unsigned char b) {
 	for(i=1; i<4; i++) {       //循环三次，得到乘2、4、8后的值
 		bw[i] = bw[i-1]<<1;    //原数值乘2
 		if(bw[i-1]&0x80) {     //判断原数值是否小于0x80，掩码原理 
-			bw[i]^=0x1b;       //最左为1，减去0x1b
+			bw[i]^=0x1b;       //最左为1，减去0x1b doublesand 
 		}
 	}
 	for(i=0; i<4; i++) {
@@ -207,10 +207,10 @@ int main() {
 	unsigned char messages[17]= {0}; //不足16个字符自动补0 
 	unsigned char Mykey[17]= {0};    
 	unsigned char Yourkey[17]= {0};  
-	printf("Please Input message:(128bit)\n");
+	printf("输入明文:(128bit)\n");
 	gets((char*)messages);  //输入messages的时候是char型，不影响后面的加密 
 
-	printf("Please Input Key:(128bit)\n");
+	printf("输入密钥:(128bit)\n");
 	gets((char*)Mykey);
 
 	Getkey(Mykey);
@@ -219,7 +219,7 @@ int main() {
 	for(i=0; i<4; i++)
 		for(j=0; j<4; j++)
 			printf("%x ",messages[j*4+i]);              
-	printf("\nPlease Input Key:(128bit)\n");
+	printf("\n输入密钥:(128bit)\n");
 	gets((char*)Yourkey);
 	Getkey(Yourkey);
 	AES_Dec(messages);
